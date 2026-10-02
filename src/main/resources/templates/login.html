@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <title>Iniciar sesión — Hotel El Descanso Eterno</title>
+  <!-- Bootstrap y Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .volver-inicio {
+    text-decoration: none;
+    color: #6c757d;
+    font-size: 0.95rem;
+    transition: color 0.2s ease;
+}
+
+.volver-inicio:hover {
+    color: #1bb550;
+}
+  </style>
+</head>
+<body class="bg-light">
+<div class="container d-flex justify-content-center align-items-center"
+     style="min-height:100vh">
+  <div class="card shadow p-4" style="max-width:420px;width:100%">
+
+    <h4 class="text-center fw-bold mb-4">Hotel El Descanso Eterno</h4>
+
+    <!--
+        param.error → Spring Security agrega ?error a la URL
+        cuando las credenciales son incorrectas
+    -->
+    <div class="alert alert-danger" th:if="${param.error}">
+      Usuario o contraseña incorrectos.
+    </div>
+
+    <!--
+        param.logout → Spring Security agrega ?logout
+        después de cerrar sesión correctamente
+    -->
+    <div class="alert alert-success" th:if="${param.logout}">
+      Sesión cerrada correctamente.
+    </div>
+
+    <!--
+        REGLA 1: th:action="@{/login}" — OBLIGATORIO.
+        Thymeleaf agrega el token CSRF automáticamente.
+        Con action="/login" estático → 403 Forbidden.
+
+        REGLA 2: Los name de los inputs DEBEN ser exactamente
+        "username" y "password" — Spring Security los lee por nombre.
+        Si se cambian (ej: "user", "pass") el login siempre falla.
+
+        REGLA 3: Spring Security procesa el POST automáticamente.
+        No se necesita ningún @PostMapping en el Controller.
+    -->
+    <form th:action="@{/login}" method="post"
+          class="needs-validation" novalidate>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Usuario</label>
+        <input type="text" class="form-control"
+               name="username"
+               placeholder="Ingresa tu usuario"
+               required autofocus>
+        <div class="invalid-feedback">El usuario es obligatorio.</div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Contraseña</label>
+        <input type="password" class="form-control"
+               name="password"
+               placeholder="Ingresa tu contraseña"
+               required>
+        <div class="invalid-feedback">La contraseña es obligatoria.</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar sesión
+      </button><br><br>
+
+     <a th:href="@{/}" class="volver-inicio">
+    <i class="bi bi-arrow-left"></i>← Volver al Inicio
+</a>
+    </form>
+
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Activar validaciones Bootstrap al hacer submit
+  document.querySelectorAll('.needs-validation').forEach(form => {
+      form.addEventListener('submit', function(e) {
+          if (!this.checkValidity()) {
+              e.preventDefault();
+              e.stopPropagation();
+          }
+          this.classList.add('was-validated');
+      });
+  });
+</script>
+</body>
+</html>

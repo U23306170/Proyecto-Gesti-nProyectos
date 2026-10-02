@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: hoteldescansoeterno
+  datasource:
+    url: jdbc:mysql://localhost:3306/hotel_descanso_eterno
+    username: root
+    password: 76529543Alexi$
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+server:
+  port: 8081
+
+app:
+  jwt:
+    secret: "hotel_descanso_eterno2026SecretKeyParaProyecto"
+    expiration: 86400000

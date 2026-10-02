@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}" lang="es">
+
+<head>
+    <title>Inicio — Hotel El Descanso Eterno</title>
+    <style>
+        .servicio-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .servicio-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, .12) !important;
+        }
+
+
+        .carousel-img {
+            width: 100%;
+            height: 620px;
+            object-fit: cover;
+        }
+
+        /* Tablets */
+        @media (max-width: 992px) {
+            .carousel-img {
+                height: 400px;
+            }
+        }
+
+        /* Celulares */
+        @media (max-width: 768px) {
+            .carousel-img {
+                height: 300px;
+            }
+        }
+
+        /* Celulares pequeños */
+        @media (max-width: 576px) {
+            .carousel-img {
+                height: 220px;
+            }
+        }
+
+        /* ===== Calendario de disponibilidad (modal detalle habitación) ===== */
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+
+        .cal-dow {
+            text-align: center;
+            font-size: .72rem;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            padding-bottom: 2px;
+        }
+
+        .cal-day {
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: .4rem;
+            font-size: .8rem;
+            font-weight: 500;
+        }
+
+        .cal-day-empty {
+            visibility: hidden;
+        }
+
+        .cal-day-libre {
+            background-color: #d1f2e0;
+            color: #146c43;
+        }
+
+        .cal-day-ocupado {
+            background-color: #f8d7da;
+            color: #842029;
+            text-decoration: line-through;
+        }
+
+        .cal-day-pasado {
+            background-color: #f1f3f5;
+            color: #adb5bd;
+        }
+
+        .cal-dot {
+            display: inline-block;
+            width: .7rem;
+            height: .7rem;
+            border-radius: 50%;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        .cal-dot-libre {
+            background-color: #d1f2e0;
+            border: 1px solid #146c43;
+        }
+
+        .cal-dot-ocupado {
+            background-color: #f8d7da;
+            border: 1px solid #842029;
+        }
+
+        .cal-dot-pasado {
+            background-color: #f1f3f5;
+            border: 1px solid #adb5bd;
+        }
+    </style>
+</head>
+
+<body>
+<div layout:fragment="content">
+
+    <!-- ========== HERO ========== -->
+    <div class="bg-secondary text-white py-5">
+        <div class="container">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7">
+                    <p class="text-uppercase text-warning fw-bold small mb-2" style="letter-spacing:2px">Sistema de
+                        Gestión</p>
+                    <h1 class="display-5 fw-bold">Hotel El Descanso Eterno</h1>
+                    <p class="lead text-white-50 mt-3">
+                        Gestiona reservas, habitaciones y huéspedes desde un solo lugar.
+                        Experimenta nuestro servicio exclusivo pet-friendly
+                    </p>
+                    <div class="d-flex flex-wrap gap-3 mt-4">
+                        <a th:href="@{/reservas}" class="btn btn-warning fw-bold px-4">
+                            <i class="bi bi-plus-circle me-2"></i>Nueva Reserva
+                        </a>
+                        <a th:href="@{/reservas}" class="btn btn-outline-light px-4">
+                            <i class="bi bi-list-ul me-2"></i>Ver Reservas
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="card text-center p-3 border-0">
+                                <i class="bi bi-calendar2-check fs-2 text-primary"></i>
+                                <div class="fw-bold fs-4 mt-1" th:text="${reservasActivas}">0</div>
+                                <div class="text-muted small">Reservas activas</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card text-center p-3 border-0">
+                                <i class="bi bi-door-open fs-2 text-success"></i>
+                                <div class="fw-bold fs-4 mt-1" th:text="${habitacionesLibres}">0</div>
+                                <div class="text-muted small">Habitaciones libres</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card text-center p-3 border-0">
+                                <i class="bi bi-people fs-2 text-info"></i>
+                                <div class="fw-bold fs-4 mt-1" th:text="${totalHuespedes}">0</div>
+                                <div class="text-muted small">Huéspedes</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card text-center p-3 border-0">
+                                <i class="bi bi-currency-pen fs-2 text-warning"></i><br>
+                                <div class="fw-bold fs-4 mt-1">S/12,480</div>
+                                <div class="text-muted small">Ingresos del mes</div><br>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== ALERTAS FLASH ========== -->
+    <div class="container mt-4">
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2"
+             th:if="${mensajeExito != null}">
+            <i class="bi bi-check-circle-fill"></i>
+            <span th:text="${mensajeExito}"></span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2"
+             th:if="${mensajeError != null}">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span th:text="${mensajeError}"></span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+    <!-- ========== CARRUSEL / HOTEL ========== -->
+    <div class="container my-5">
+        <div id="galeria"
+             class="carousel slide"
+             data-bs-ride="carousel"
+             data-bs-interval="3000"
+             data-bs-pause="false">
+            <div class="carousel-indicators">
+                <button type="button" data-bs-target="#galeria" data-bs-slide-to="0" class="active"
+                        aria-current="true" aria-label="Slide 1"></button>
+                <button type="button" data-bs-target="#galeria" data-bs-slide-to="1" aria-label="Slide 2"></button>
+                <button type="button" data-bs-target="#galeria" data-bs-slide-to="2" aria-label="Slide 3"></button>
+            </div>
+            <div class="carousel-inner">
+                <div class="carousel-item active">
+                    <img th:src="@{img/isidro1.jpg}" class="carousel-img" alt="isidro1">
+                </div>
+
+                <div class="carousel-item">
+                    <img th:src="@{img/isidro2.jpg}" class="carousel-img" alt="isidro2">
+                </div>
+
+                <div class="carousel-item">
+                    <img th:src="@{img/isidro3.jpg}" class="carousel-img" alt="isidro3">
+                </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#galeria" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#galeria" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
+    </div>
+    <!-- ========== SERVICIOS / AMENIDADES ========== -->
+    <section class="container my-5">
+        <h2 class="fw-bold border-start border-4 border-success ps-3 mb-4">
+            <i class="bi bi-stars me-2"></i>Nuestros servicios
+        </h2>
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-4 text-center">
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm py-4 servicio-card">
+                    <i class="bi bi-wifi text-primary" style="font-size: 2.5rem;"></i>
+                    <h6 class="fw-bold mt-3 mb-1">WiFi gratis</h6>
+                    <p class="text-muted small mb-0">Internet de alta velocidad en todo el hotel</p>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm py-4 servicio-card">
+                    <i class="bi bi-cup-hot text-warning" style="font-size: 2.5rem;"></i>
+                    <h6 class="fw-bold mt-3 mb-1">Desayuno incluido</h6>
+                    <p class="text-muted small mb-0">Buffet variado todas las mañanas</p>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm py-4 servicio-card">
+                    <i class="bi bi-water text-info" style="font-size: 2.5rem;"></i>
+                    <h6 class="fw-bold mt-3 mb-1">Piscina</h6>
+                    <p class="text-muted small mb-0">Área de relajación abierta todo el año</p>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm py-4 servicio-card">
+                    <i class="bi bi-heart text-danger" style="font-size: 2.5rem;"></i>
+                    <h6 class="fw-bold mt-3 mb-1">Pet-friendly</h6>
+                    <p class="text-muted small mb-0">Tu mascota también es bienvenida</p>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm py-4 servicio-card">
+                    <i class="bi bi-p-square text-success" style="font-size: 2.5rem;"></i>
+                    <h6 class="fw-bold mt-3 mb-1">Estacionamiento</h6>
+                    <p class="text-muted small mb-0">Espacio seguro y gratuito para huéspedes</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== HABITACIONES ========== -->
+    <section id="habitaciones" class="container my-5">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+            <h2 class="fw-bold border-start border-4 border-primary ps-3 mb-0">
+                <i class="bi bi-door-open me-2"></i>Tipos de habitaciones
+            </h2>
+            <span class="badge fs-6 py-2 px-3"
+                  th:classappend="${habitacionesLibres > 0} ? 'bg-success' : 'bg-secondary'">
+                    <i class="bi bi-check-circle me-1"></i>
+                    <span th:text="${habitacionesLibres}">0</span> de
+                    <span th:text="${totalHabitaciones}">0</span> habitaciones disponibles
+                </span>
+        </div>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+
+            <div class="col" th:each="h : ${habitaciones}">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center"
+                         th:classappend="${h.headerClass}">
+                            <span>
+                                <i class="bi me-2"
+                                   th:classappend="${h.tipo == 'Pet-friendly'} ? 'bi-star-fill' : 'bi-door-closed'"></i>
+                                <span th:text="|Hab. ${h.numero} — ${h.tipo}|"></span>
+                            </span>
+                        <!--
+                        h.estadoBadgeClass / h.estadoMostrado → calculados en HabitacionDTO
+                        a partir de Mantenimiento (administrativo) + ocupadaHoy (real, por fecha).
+                        Ya NO muestran el campo "estado" en crudo (podía quedar en "Ocupada" fijo).
+                    -->
+                        <span class="badge" th:classappend="${h.estadoBadgeClass}" th:text="${h.estadoMostrado}"></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-2 mb-3 p-2 rounded border" th:classappend="${disponiblesPorTipo[h.tipo] != null and disponiblesPorTipo[h.tipo] > 0}
+                                             ? 'bg-success-subtle border-success'
+                                             : 'bg-light border-secondary-subtle'">
+                            <i class="bi bi-door-open fs-5" th:classappend="${disponiblesPorTipo[h.tipo] != null and disponiblesPorTipo[h.tipo] > 0}
+                                                ? 'text-success' : 'text-muted'"></i>
+                            <div class="small">
+                                    <span class="fw-semibold"
+                                          th:text="${disponiblesPorTipo[h.tipo] != null ? disponiblesPorTipo[h.tipo] : 0}">0</span>
+                                <span> de </span>
+                                <span class="fw-semibold" th:text="${totalPorTipo[h.tipo]}">0</span>
+                                <span> habitaciones </span>
+                                <span th:text="${h.tipo}">tipo</span>
+                                <span> disponibles</span>
+                            </div>
+                        </div>
+                        <p class="card-text text-muted" th:text="${h.descripcion}"></p>
+                        <p class="fw-bold fs-5 text-warning mb-0">
+                            <!--
+                            h.precio es Double — #numbers.formatInteger convierte a entero
+                            sin necesitar un método getPrecioInt() en el DTO
+                        -->
+                            S/ <span th:text="${#numbers.formatInteger(h.precio, 1)}"></span>
+                            <span class="text-muted fw-normal fs-6">/ noche</span>
+                        </p>
+                    </div>
+                    <div class="card-footer d-flex gap-2">
+                        <!--
+                        h.disponible → isDisponible() del HabitacionDTO
+                    -->
+                        <a th:if="${h.disponible}" th:href="@{/reservas}" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-calendar-plus me-1"></i>Reservar
+                        </a>
+                        <button th:unless="${h.disponible}" class="btn btn-secondary btn-sm w-100" disabled>
+                            <i class="bi bi-x-circle me-1"></i>No disponible
+                        </button>
+                        <!--
+                        data-precio usa h.precio (Double) — JS lo lee con parseFloat()
+                        data-amenidades usa h.amenidadesStr → getAmenidadesStr() del DTO
+                        que devuelve los nombres separados por coma
+                    -->
+                        <button class="btn btn-outline-secondary btn-sm" th:attr="data-id=${h.id},
+                                         data-numero=${h.numero},
+                                         data-tipo=${h.tipo},
+                                         data-precio=${h.precio},
+                                         data-estado=${h.estadoMostrado},
+                                         data-descripcion=${h.descripcion},
+                                         data-amenidades=${h.amenidadesStr}" onclick="abrirDetalle(this)"
+                                data-bs-toggle="modal" data-bs-target="#modalDetalleHab">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ========== TESTIMONIOS ========== -->
+    <section class="container my-5">
+        <h2 class="fw-bold border-start border-4 border-warning ps-3 mb-4">
+            <i class="bi bi-chat-quote me-2"></i>Lo que dicen nuestros huéspedes
+        </h2>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm p-4">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
+                             style="width:56px;height:56px;font-size:1.2rem;">MG</div>
+                        <div>
+                            <h6 class="fw-bold mb-0">María Gutiérrez</h6>
+                            <div class="text-warning small">
+                                <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 fst-italic">
+                        "Excelente atención y la habitación estaba impecable. Lo que más me gustó fue poder
+                        hospedarme junto a mi perro sin ningún problema."
+                    </p>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm p-4">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center fw-bold"
+                             style="width:56px;height:56px;font-size:1.2rem;">JR</div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Jorge Ramírez</h6>
+                            <div class="text-warning small">
+                                <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 fst-italic">
+                        "La reserva fue rápida y sin complicaciones. El desayuno buffet superó mis expectativas,
+                        volveré sin duda en mi próximo viaje."
+                    </p>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm p-4">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center fw-bold"
+                             style="width:56px;height:56px;font-size:1.2rem;">LT</div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Lucía Torres</h6>
+                            <div class="text-warning small">
+                                <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-half"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 fst-italic">
+                        "Un hotel cómodo, limpio y con muy buena ubicación. El personal siempre estuvo dispuesto
+                        a ayudar durante toda la estadía."
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== MODAL: DETALLE HABITACIÓN ========== -->
+    <div class="modal fade" id="modalDetalleHab" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark" id="detalleHeader">
+                    <h5 class="modal-title fw-bold" id="detalleTitulo">
+                        <i class="bi bi-door-closed me-2"></i>Habitación
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <div class="p-2 bg-light rounded text-center">
+                                <div class="text-muted small">Tipo</div>
+                                <div class="fw-bold" id="detalleTipo">—</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 bg-light rounded text-center">
+                                <div class="text-muted small">Precio / noche</div>
+                                <div class="fw-bold text-warning" id="detallePrecio">—</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 bg-light rounded text-center">
+                                <div class="text-muted small">Estado</div>
+                                <span class="badge" id="detalleEstadoBadge">—</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 bg-light rounded text-center">
+                                <div class="text-muted small">N° Habitación</div>
+                                <div class="fw-bold" id="detalleNumero">—</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted small" id="detalleDescripcion"></p>
+                    <div class="d-flex flex-wrap gap-2 mt-2" id="detalleAmenidades"></div>
+
+                    <hr class="my-3">
+
+                    <!-- ===== Calendario de disponibilidad ===== -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">
+                            <i class="bi bi-calendar3 me-1"></i>Disponibilidad
+                        </h6>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary" id="calMesAnterior">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <span class="btn btn-light disabled fw-semibold" id="calMesLabel"
+                                  style="min-width:130px;"></span>
+                            <button type="button" class="btn btn-outline-secondary" id="calMesSiguiente">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="calendarioDisponibilidad">
+                        <div class="text-center text-muted small py-3" id="calCargando">
+                            Cargando calendario...
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3 mt-2 small text-muted">
+                        <span><span class="cal-dot cal-dot-libre"></span> Disponible</span>
+                        <span><span class="cal-dot cal-dot-ocupado"></span> Ocupado</span>
+                        <span><span class="cal-dot cal-dot-pasado"></span> No disponible</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <a th:href="@{/reservas}" class="btn btn-primary">
+                        <i class="bi bi-calendar-plus me-1"></i>Reservar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        // ===== Estado del calendario de disponibilidad =====
+        let calRangosOcupados = [];   // [{entrada:'2026-07-20', salida:'2026-07-23'}, ...]
+        let calMesActual = new Date();
+        calMesActual.setDate(1);
+
+        function abrirDetalle(btn) {
+            const d = btn.dataset;
+            const petfriendly = d.tipo === 'Pet-friendly';
+            document.getElementById('detalleTitulo').innerHTML =
+                `<i class="bi ${petfriendly ? 'bi-star-fill' : 'bi-door-closed'} me-2"></i>Hab. ${d.numero} — ${d.tipo}`;
+            document.getElementById('detalleTipo').textContent = d.tipo;
+            // precio llega como Double (ej: "120.0") — parseFloat + toFixed para mostrar
+            document.getElementById('detallePrecio').textContent = 'S/ ' + parseFloat(d.precio).toFixed(0);
+            document.getElementById('detalleNumero').textContent = d.numero;
+            document.getElementById('detalleDescripcion').textContent = d.descripcion;
+            const badge = document.getElementById('detalleEstadoBadge');
+            badge.textContent = d.estado;
+            let claseBadge = 'bg-success';           // Disponible
+            if (d.estado === 'Ocupada hoy') claseBadge = 'bg-warning text-dark';
+            else if (d.estado === 'Mantenimiento') claseBadge = 'bg-dark';
+            badge.className = 'badge ' + claseBadge;
+            const cont = document.getElementById('detalleAmenidades');
+            cont.innerHTML = '';
+            (d.amenidades || '').split(',').filter(a => a.trim()).forEach(a => {
+                cont.innerHTML += `<span class="badge bg-secondary"><i class="bi bi-check me-1"></i>${a.trim()}</span>`;
+            });
+
+            // Reiniciar el calendario al mes actual y cargar disponibilidad de esta habitación
+            calMesActual = new Date();
+            calMesActual.setDate(1);
+            cargarCalendario(d.id);
+        }
+
+        function cargarCalendario(habitacionId) {
+            const cont = document.getElementById('calendarioDisponibilidad');
+            cont.innerHTML = '<div class="text-center text-muted small py-3">Cargando calendario...</div>';
+
+            if (!habitacionId) {
+                cont.innerHTML = '<div class="text-center text-muted small py-3">No se pudo cargar la disponibilidad.</div>';
+                return;
+            }
+
+            fetch(`/habitaciones/${habitacionId}/fechas-ocupadas`)
+                .then(resp => {
+                    if (!resp.ok) throw new Error('Error al consultar disponibilidad');
+                    return resp.json();
+                })
+                .then(rangos => {
+                    calRangosOcupados = rangos;
+                    renderCalendario();
+                })
+                .catch(() => {
+                    calRangosOcupados = [];
+                    cont.innerHTML = '<div class="text-center text-danger small py-3">No se pudo cargar el calendario. Intenta nuevamente.</div>';
+                });
+        }
+
+        // ¿La fecha (Date) cae dentro de algún rango ocupado [entrada, salida)?
+        function fechaEstaOcupada(fecha) {
+            const iso = fechaToISO(fecha);
+            return calRangosOcupados.some(r => iso >= r.entrada && iso < r.salida);
+        }
+
+        function fechaToISO(fecha) {
+            const y = fecha.getFullYear();
+            const m = String(fecha.getMonth() + 1).padStart(2, '0');
+            const d = String(fecha.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function renderCalendario() {
+            const cont = document.getElementById('calendarioDisponibilidad');
+            const label = document.getElementById('calMesLabel');
+
+            const anio = calMesActual.getFullYear();
+            const mes = calMesActual.getMonth();
+
+            const nombresMes = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            label.textContent = `${nombresMes[mes]} ${anio}`;
+
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+
+            const primerDiaSemana = new Date(anio, mes, 1).getDay(); // 0=Dom
+            const diasEnMes = new Date(anio, mes + 1, 0).getDate();
+
+            let html = '<div class="cal-grid mb-1">';
+            ['D', 'L', 'M', 'M', 'J', 'V', 'S'].forEach(d => {
+                html += `<div class="cal-dow">${d}</div>`;
+            });
+            html += '</div><div class="cal-grid">';
+
+            for (let i = 0; i < primerDiaSemana; i++) {
+                html += '<div class="cal-day cal-day-empty">.</div>';
+            }
+
+            for (let dia = 1; dia <= diasEnMes; dia++) {
+                const fecha = new Date(anio, mes, dia);
+                let claseDia = 'cal-day-libre';
+                if (fecha < hoy) {
+                    claseDia = 'cal-day-pasado';
+                } else if (fechaEstaOcupada(fecha)) {
+                    claseDia = 'cal-day-ocupado';
+                }
+                html += `<div class="cal-day ${claseDia}">${dia}</div>`;
+            }
+
+            html += '</div>';
+            cont.innerHTML = html;
+
+            // No permitir retroceder antes del mes actual
+            const mesHoy = new Date();
+            mesHoy.setDate(1);
+            mesHoy.setHours(0, 0, 0, 0);
+            document.getElementById('calMesAnterior').disabled = (calMesActual <= mesHoy);
+        }
+
+        document.getElementById('calMesAnterior').addEventListener('click', () => {
+            calMesActual.setMonth(calMesActual.getMonth() - 1);
+            renderCalendario();
+        });
+
+        document.getElementById('calMesSiguiente').addEventListener('click', () => {
+            calMesActual.setMonth(calMesActual.getMonth() + 1);
+            renderCalendario();
+        });
+    </script>
+</th:block>
+</body>
+
+</html>

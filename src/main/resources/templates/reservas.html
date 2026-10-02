@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head>
+    <title>Reservas — Hotel El Descanso Eterno</title>
+</head>
+<body >
+<div layout:fragment="content">
+
+   
+    <section class="container my-5">
+
+        <!-- Alertas flash -->
+        <div class="alert alert-success alert-dismissible fade show mb-3 d-flex align-items-center gap-2"
+             th:if="${mensajeExito != null}">
+            <i class="bi bi-check-circle-fill"></i>
+            <span th:text="${mensajeExito}"></span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+        <div class="alert alert-danger alert-dismissible fade show mb-3 d-flex align-items-center gap-2"
+             th:if="${mensajeError != null}">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span th:text="${mensajeError}"></span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Encabezado -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h2 class="fw-bold border-start border-4 border-primary ps-3 mb-0">
+                <i class="bi bi-calendar-check me-2"></i>Listado de Reservas
+            </h2>
+            <button class="btn btn-primary"
+                    data-bs-toggle="modal" data-bs-target="#modalNuevaReserva" sec:authorize="hasAnyRole('ADMIN','RECEPCIONISTA')">
+                <i class="bi bi-plus-circle me-2"></i>Nueva Reserva
+            </button>
+        </div>
+
+        <!-- Filtros JS -->
+        <div class="row g-2 mb-3">
+            <div class="col-12 col-md-4">
+                <input type="text" id="filtroHuesped" class="form-control"
+                       placeholder="Buscar por huésped..." oninput="filtrarTabla()">
+            </div>
+            <div class="col-6 col-md-3">
+                <select class="form-select" id="filtroEstado" onchange="filtrarTabla()">
+                    <option value="">Todos los estados</option>
+                    <option>Pendiente</option>
+                    <option>Confirmada</option>
+                    <option>Anulada</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <select class="form-select" id="filtroTipo" onchange="filtrarTabla()">
+                    <option value="">Todos los tipos</option>
+                    <option>Simple</option>
+                    <option>Doble</option>
+                    <option>Pet-friendly</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <button class="btn btn-outline-secondary w-100" onclick="limpiarFiltros()">
+                    <i class="bi bi-x-circle me-1"></i>Limpiar
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-bordered align-middle" id="tablaReservas">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Huésped</th>
+                        <th>Habitación</th>
+                        <th>Entrada</th>
+                        <th>Salida</th>
+                        <th>Noches</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th sec:authorize="isAuthenticated()">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="r : ${reservas}"
+                        th:attr="data-huesped=${r.huespedNombre},data-estado=${r.estadoDisplay},data-habitacion=${r.habitacionNumero},data-tipo=${r.habitacionTipo}">
+                        <td><small class="text-muted" th:text="'#' + ${r.id}"></small></td>
+                        <td th:text="${r.huespedNombre}"></td>
+                        <td th:text="${r.habitacionNumero} + ' — ' + ${r.habitacionTipo}"></td>
+                        <td th:text="${r.fechaEntradaDisplay}"></td>
+                        <td th:text="${r.fechaSalidaDisplay}"></td>
+                        <td th:text="${r.noches}"></td>
+                        <td><strong th:text="${r.totalFormatted}"></strong></td>
+                        <td>
+                            <span class="badge rounded-pill"
+                                  th:classappend="${r.estadoBadgeClass}"
+                                  th:text="${r.estadoDisplay}"></span>
+                        </td>
+                        <td sec:authorize="isAuthenticated()">
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-outline-primary"
+                                        th:disabled="${r.anulada}"
+                                        th:attr="data-id=${r.id},data-estado=${r.estado},data-fecha-entrada=${r.fechaEntradaISO},data-fecha-salida=${r.fechaSalidaISO},data-precio=${r.habitacionPrecio}"
+                                        onclick="abrirEditar(this)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        th:disabled="${r.anulada}"
+                                        th:attr="data-id=${r.id}"
+                                        onclick="abrirCancelar(this)" sec:authorize="hasRole('ADMIN')">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(reservas)}">
+                        <td colspan="9" class="text-center text-muted py-4">No hay reservas registradas.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ========== MODAL: NUEVA RESERVA ========== -->
+    <div class="modal fade" id="modalNuevaReserva" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Nueva Reserva</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <!--
+                    needs-validation + novalidate → Bootstrap valida en el submit
+                    Si el navegador aprueba → envía al servidor → Spring Validator (segunda capa)
+                -->
+                <form th:action="@{/reservas/registrar}" method="post"
+                      id="formNuevaReserva" class="needs-validation" novalidate>
+                    <div class="modal-body">
+                        <div class="row g-3">
+
+                            <!-- Huésped -->
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">
+                                    Huésped <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" name="huespedId" required>
+                                    <option value="">Seleccionar huésped...</option>
+                                    <option th:each="h : ${huespedes}"
+                                            th:value="${h.id}"
+                                            th:text="|${h.nombre} — DNI: ${h.dni}|"></option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Selecciona un huésped.
+                                </div>
+                            </div>
+
+                            <!-- Habitación -->
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">
+                                    Habitación disponible <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="selectHab" name="habitacionId"
+                                        onchange="calcularNoches()" required>
+                                    <option value="">Seleccionar habitación...</option>
+                                    <option th:each="h : ${habitacionesDisponibles}"
+                                            th:value="${h.id}"
+                                            th:text="${h.selectLabel}"
+                                            th:attr="data-precio=${h.precio}"></option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Selecciona una habitación disponible.
+                                </div>
+                            </div>
+
+                            <!-- Fecha entrada -->
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">
+                                    Fecha de entrada <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" id="fechaEntrada"
+                                       name="fechaEntrada" oninput="actualizarMinSalida(); calcularNoches()" required>
+                                <div class="invalid-feedback" id="feedbackFechaEntrada">
+                                    La fecha de entrada no puede ser anterior a hoy.
+                                </div>
+                            </div>
+
+                            <!-- Fecha salida -->
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">
+                                    Fecha de salida <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" id="fechaSalida"
+                                       name="fechaSalida" oninput="calcularNoches()" required>
+                                <div class="invalid-feedback" id="feedbackFechaSalida">
+                                    La fecha de salida no puede ser anterior a hoy ni anterior a la entrada.
+                                </div>
+                            </div>
+
+                            <!-- Noches (solo lectura) -->
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-semibold">N° noches</label>
+                                <input type="number" class="form-control bg-light"
+                                       id="nochesDisplay" value="0" readonly tabindex="-1">
+                                <input type="hidden" id="nochesHidden" name="noches" value="0">
+                            </div>
+
+                            <!-- Total (solo lectura) -->
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-semibold">Total a pagar</label>
+                                <input type="text" class="form-control bg-light fw-bold text-success"
+                                       id="totalDisplay" value="S/ 0.00" readonly tabindex="-1">
+                                <input type="hidden" id="totalHidden" name="total" value="0">
+                            </div>
+
+                            <!-- Observaciones (opcional) -->
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Observaciones</label>
+                                <textarea class="form-control" name="observaciones" rows="2"
+                                          placeholder="Ej: llegada tardía, cama adicional..."></textarea>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x me-1"></i>Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Confirmar Reserva
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL: EDITAR RESERVA ========== -->
+    <div class="modal fade" id="modalEditarReserva" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="editarTitulo">
+                        <i class="bi bi-pencil me-2"></i>Editar Reserva
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form th:action="@{/reservas/editar}" method="post"
+                      id="formEditarReserva" class="needs-validation" novalidate>
+                    <input type="hidden" id="editId" name="id" value="">
+                    <input type="hidden" id="editPrecio" value="0">
+                    <div class="modal-body">
+                        <div class="row g-3">
+
+                            <!-- Estado -->
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">
+                                    Estado <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="editEstado" name="estado" required>
+                                    <option value="">Seleccionar estado...</option>
+                                    <option>Pendiente</option>
+                                    <option>Confirmada</option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Selecciona un estado para la reserva.
+                                </div>
+                            </div>
+
+                            <!-- Fecha entrada -->
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">
+                                    Fecha de entrada <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" id="editFechaEntrada"
+                                       name="fechaEntrada"
+                                       oninput="actualizarMinSalidaEditar(); calcularNochesEditar()" required>
+                                <div class="invalid-feedback" id="feedbackEditFechaEntrada">
+                                    La fecha de entrada no puede ser anterior a hoy.
+                                </div>
+                            </div>
+
+                            <!-- Fecha salida -->
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">
+                                    Fecha de salida <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" class="form-control" id="editFechaSalida"
+                                       name="fechaSalida"
+                                       oninput="calcularNochesEditar()" required>
+                                <div class="invalid-feedback" id="feedbackEditFechaSalida">
+                                    La fecha de salida debe ser posterior a la entrada.
+                                </div>
+                            </div>
+
+                            <!-- Noches (solo lectura) -->
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-semibold">N° noches</label>
+                                <input type="number" class="form-control bg-light"
+                                       id="editNochesDisplay" value="0" readonly tabindex="-1">
+                            </div>
+
+                            <!-- Total (solo lectura) -->
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-semibold">Total a pagar</label>
+                                <input type="text" class="form-control bg-light fw-bold text-success"
+                                       id="editTotalDisplay" value="S/ 0.00" readonly tabindex="-1">
+                            </div>
+
+                        </div>
+
+                        <p class="text-muted small mb-0 mt-3">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Si el huésped ya no desea la reserva, usa el botón
+                            <strong>Anular</strong> de la tabla.
+                        </p>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x me-1"></i>Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Guardar cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL: CANCELAR RESERVA ========== -->
+    <div class="modal fade" id="modalCancelar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Anular Reserva
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <!--
+                    El motivo es opcional — no necesita required.
+                    needs-validation igual para consistencia y futuros campos obligatorios.
+                -->
+                <form th:action="@{/reservas/anular}" method="post"
+                      id="formCancelarReserva" class="needs-validation" novalidate>
+                    <input type="hidden" id="cancelId" name="id" value="">
+                    <div class="modal-body">s
+
+                        <div class="alert alert-warning d-flex align-items-center gap-2">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <span>El estado cambiará a <strong>Anulada</strong>
+                                  (el huésped ya no desea la reserva).
+                                  Esta acción no se puede deshacer.</span>
+                        </div>
+
+                        <!-- Resumen de la reserva -->
+                        <p class="mb-3">
+                            Reserva: <strong id="cancelResumen">—</strong>
+                        </p>
+
+                        <!-- Motivo (opcional) -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Motivo de anulación</label>
+                            <select class="form-select" name="motivo">
+                                <option value="">Sin motivo específico</option>
+                                <option>Solicitud del huésped</option>
+                                <option>Error en la reserva</option>
+                                <option>Fuerza mayor</option>
+                                <option>Otro</option>
+                            </select>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-arrow-left me-1"></i>Volver
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle me-1"></i>Confirmar anulación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<th:block layout:fragment="scripts">
+<script>
+    // ── Fechas mínimas (no permitir fechas pasadas) ───────────
+    function hoyISO() {
+        const hoy = new Date();
+        const local = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 10);
+    }
+
+    function sumarDias(isoDate, dias) {
+        const d = new Date(isoDate + 'T00:00:00');
+        d.setDate(d.getDate() + dias);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    function configurarFechasReserva() {
+        const hoy = hoyISO();
+        document.getElementById('fechaEntrada').min = hoy;
+        actualizarMinSalida();
+    }
+
+    function actualizarMinSalida() {
+        const hoy = hoyISO();
+        const entrada = document.getElementById('fechaEntrada').value;
+        const fechaSalida = document.getElementById('fechaSalida');
+
+        if (entrada) {
+            const minSalida = sumarDias(entrada, 1);
+            fechaSalida.min = minSalida;
+            if (fechaSalida.value && fechaSalida.value < minSalida) {
+                fechaSalida.value = '';
+            }
+        } else {
+            fechaSalida.min = sumarDias(hoy, 1);
+            if (fechaSalida.value && fechaSalida.value < fechaSalida.min) {
+                fechaSalida.value = '';
+            }
+        }
+    }
+
+    // ── Cálculo de noches y total ────────────────────────────
+    function calcularNoches() {
+        const select  = document.getElementById('selectHab');
+        const opt     = select.options[select.selectedIndex];
+        const precio  = parseFloat(opt ? opt.dataset.precio : 0) || 0;
+        const hoy     = hoyISO();
+        const entrada = document.getElementById('fechaEntrada').value;
+        const salida  = document.getElementById('fechaSalida').value;
+        const inputEntrada   = document.getElementById('fechaEntrada');
+        const inputSalida    = document.getElementById('fechaSalida');
+        const feedbackEntrada = document.getElementById('feedbackFechaEntrada');
+        const feedbackSalida  = document.getElementById('feedbackFechaSalida');
+
+        inputEntrada.setCustomValidity('');
+        inputSalida.setCustomValidity('');
+
+        if (entrada && entrada < hoy) {
+            inputEntrada.setCustomValidity('La fecha de entrada no puede ser anterior a hoy.');
+            feedbackEntrada.textContent = 'La fecha de entrada no puede ser anterior a hoy.';
+        } else if (!entrada) {
+            feedbackEntrada.textContent = 'La fecha de entrada es obligatoria.';
+        }
+
+        if (salida && salida < hoy) {
+            inputSalida.setCustomValidity('La fecha de salida no puede ser anterior a hoy.');
+            feedbackSalida.textContent = 'La fecha de salida no puede ser anterior a hoy.';
+        } else if (entrada && salida) {
+            const diff = (new Date(salida + 'T00:00:00') - new Date(entrada + 'T00:00:00')) / 86400000;
+            const noches = diff > 0 ? diff : 0;
+            document.getElementById('nochesDisplay').value = noches;
+            document.getElementById('nochesHidden').value  = noches;
+            document.getElementById('totalDisplay').value  = 'S/ ' + (noches * precio).toFixed(2);
+            document.getElementById('totalHidden').value   = (noches * precio).toFixed(2);
+
+            if (diff <= 0) {
+                inputSalida.setCustomValidity('La fecha de salida debe ser posterior a la fecha de entrada.');
+                feedbackSalida.textContent = 'La fecha de salida debe ser posterior a la fecha de entrada.';
+            } else {
+                feedbackSalida.textContent = 'La fecha de salida es obligatoria.';
+            }
+        } else if (!salida) {
+            feedbackSalida.textContent = 'La fecha de salida es obligatoria.';
+        } else {
+            document.getElementById('nochesDisplay').value = '0';
+            document.getElementById('nochesHidden').value  = '0';
+            document.getElementById('totalDisplay').value  = 'S/ 0.00';
+            document.getElementById('totalHidden').value   = '0';
+        }
+    }
+
+    // ── Abrir modal editar ───────────────────────────────────
+    function abrirEditar(btn) {
+        const d = btn.dataset;
+        document.getElementById('editId').value = d.id;
+        document.getElementById('editPrecio').value = d.precio || '0';
+        document.getElementById('editFechaEntrada').value = d.fechaEntrada || '';
+        document.getElementById('editFechaSalida').value = d.fechaSalida || '';
+        document.getElementById('editarTitulo').innerHTML =
+            '<i class="bi bi-pencil me-2"></i>Editar Reserva #' + d.id;
+
+        const select = document.getElementById('editEstado');
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === d.estado) {
+                select.selectedIndex = i;
+                break;
+            }
+        }
+
+        configurarFechasEditar();
+        calcularNochesEditar();
+
+        const form = document.getElementById('formEditarReserva');
+        form.classList.remove('was-validated');
+
+        new bootstrap.Modal(document.getElementById('modalEditarReserva')).show();
+    }
+
+    function configurarFechasEditar() {
+        const hoy = hoyISO();
+        document.getElementById('editFechaEntrada').min = hoy;
+        actualizarMinSalidaEditar();
+    }
+
+    function actualizarMinSalidaEditar() {
+        const hoy = hoyISO();
+        const entrada = document.getElementById('editFechaEntrada').value;
+        const fechaSalida = document.getElementById('editFechaSalida');
+
+        if (entrada) {
+            const minSalida = sumarDias(entrada, 1);
+            fechaSalida.min = minSalida;
+            if (fechaSalida.value && fechaSalida.value < minSalida) {
+                fechaSalida.value = '';
+            }
+        } else {
+            fechaSalida.min = sumarDias(hoy, 1);
+            if (fechaSalida.value && fechaSalida.value < fechaSalida.min) {
+                fechaSalida.value = '';
+            }
+        }
+    }
+
+    function calcularNochesEditar() {
+        const precio  = parseFloat(document.getElementById('editPrecio').value) || 0;
+        const hoy     = hoyISO();
+        const entrada = document.getElementById('editFechaEntrada').value;
+        const salida  = document.getElementById('editFechaSalida').value;
+        const inputEntrada    = document.getElementById('editFechaEntrada');
+        const inputSalida     = document.getElementById('editFechaSalida');
+        const feedbackEntrada = document.getElementById('feedbackEditFechaEntrada');
+        const feedbackSalida  = document.getElementById('feedbackEditFechaSalida');
+
+        inputEntrada.setCustomValidity('');
+        inputSalida.setCustomValidity('');
+
+        if (entrada && entrada < hoy) {
+            inputEntrada.setCustomValidity('La fecha de entrada no puede ser anterior a hoy.');
+            feedbackEntrada.textContent = 'La fecha de entrada no puede ser anterior a hoy.';
+        } else if (!entrada) {
+            feedbackEntrada.textContent = 'La fecha de entrada es obligatoria.';
+        }
+
+        if (salida && salida < hoy) {
+            inputSalida.setCustomValidity('La fecha de salida no puede ser anterior a hoy.');
+            feedbackSalida.textContent = 'La fecha de salida no puede ser anterior a hoy.';
+        } else if (entrada && salida) {
+            const diff = (new Date(salida + 'T00:00:00') - new Date(entrada + 'T00:00:00')) / 86400000;
+            const noches = diff > 0 ? diff : 0;
+            document.getElementById('editNochesDisplay').value = noches;
+            document.getElementById('editTotalDisplay').value  = 'S/ ' + (noches * precio).toFixed(2);
+
+            if (diff <= 0) {
+                inputSalida.setCustomValidity('La fecha de salida debe ser posterior a la fecha de entrada.');
+                feedbackSalida.textContent = 'La fecha de salida debe ser posterior a la fecha de entrada.';
+            } else {
+                feedbackSalida.textContent = 'La fecha de salida es obligatoria.';
+            }
+        } else if (!salida) {
+            feedbackSalida.textContent = 'La fecha de salida es obligatoria.';
+        } else {
+            document.getElementById('editNochesDisplay').value = '0';
+            document.getElementById('editTotalDisplay').value  = 'S/ 0.00';
+        }
+    }
+
+    // ── Abrir modal cancelar ─────────────────────────────────
+    function abrirCancelar(btn) {
+        document.getElementById('cancelId').value = btn.dataset.id;
+        document.getElementById('cancelResumen').textContent = 'Reserva #' + btn.dataset.id;
+        new bootstrap.Modal(document.getElementById('modalCancelar')).show();
+    }
+
+    // ── Filtros de la tabla ──────────────────────────────────
+    function filtrarTabla() {
+        const textoHuesped = document.getElementById('filtroHuesped').value.toLowerCase();
+        const estado       = document.getElementById('filtroEstado').value.toLowerCase();
+        const tipo         = document.getElementById('filtroTipo').value.toLowerCase();
+        document.querySelectorAll('#tablaReservas tbody tr[data-huesped]').forEach(fila => {
+            const huesped  = (fila.dataset.huesped || '').toLowerCase();
+            const estFila  = (fila.dataset.estado  || '').toLowerCase();
+            const tipoFila = (fila.dataset.tipo    || '').toLowerCase();
+            const okHuesped = !textoHuesped || huesped.includes(textoHuesped);
+            const okEstado  = !estado       || estFila === estado;
+            const okTipo    = !tipo         || tipoFila === tipo;
+            fila.style.display = (okHuesped && okEstado && okTipo) ? '' : 'none';
+        });
+    }
+
+    function limpiarFiltros() {
+        document.getElementById('filtroHuesped').value = '';
+        document.getElementById('filtroEstado').value  = '';
+        document.getElementById('filtroTipo').value    = '';
+        filtrarTabla();
+    }
+
+    // ── Validación Bootstrap (primera capa) ──────────────────
+    // Se aplica a TODOS los formularios con class="needs-validation"
+    // Si el navegador aprueba → se envía al servidor → Spring Validator (segunda capa)
+    document.addEventListener('DOMContentLoaded', () => {
+        configurarFechasReserva();
+
+        document.getElementById('modalNuevaReserva').addEventListener('show.bs.modal', () => {
+            configurarFechasReserva();
+        });
+
+        document.querySelectorAll('.needs-validation').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                if (this.id === 'formNuevaReserva') {
+                    calcularNoches();
+                }
+                if (this.id === 'formEditarReserva') {
+                    calcularNochesEditar();
+                }
+                if (!this.checkValidity()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                this.classList.add('was-validated');
+            });
+        });
+
+        // Limpiar was-validated al cerrar modales para que no persista
+        // el estado de error en la próxima apertura
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('hidden.bs.modal', () => {
+                const form = modal.querySelector('.needs-validation');
+                if (form) {
+                    form.classList.remove('was-validated');
+                    form.reset();
+                    // Limpiar validaciones personalizadas
+                    form.querySelectorAll('input, select, textarea').forEach(el => {
+                        el.setCustomValidity('');
+                    });
+                    // Resetear cálculos de noches/total si es el form de nueva reserva
+                    if (form.id === 'formNuevaReserva') {
+                        document.getElementById('nochesDisplay').value = '0';
+                        document.getElementById('nochesHidden').value  = '0';
+                        document.getElementById('totalDisplay').value  = 'S/ 0.00';
+                        document.getElementById('totalHidden').value   = '0';
+                        configurarFechasReserva();
+                    }
+                    if (form.id === 'formEditarReserva') {
+                        document.getElementById('editNochesDisplay').value = '0';
+                        document.getElementById('editTotalDisplay').value  = 'S/ 0.00';
+                    }
+                }
+            });
+        });
+    });
+</script>
+</th:block>
+</body>
+</html>

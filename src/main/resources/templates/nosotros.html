@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/base}" lang="es">
+
+<head>
+    <title>Nosotros — Hotel El Descanso Eterno</title>
+</head>
+
+<body>
+    <div layout:fragment="content">
+
+        <!-- ========== HERO ========== -->
+        <div class="bg-secondary text-white py-5">
+            <div class="container">
+                <p class="text-uppercase text-warning fw-bold small mb-2" style="letter-spacing:2px">Conócenos</p>
+                <h1 class="display-5 fw-bold">Nosotros</h1>
+                <p class="lead text-white-50 mt-2 mb-0">
+                    Nuestra historia, misión y visión como hotel.
+                </p>
+            </div>
+        </div>
+
+        <!-- ========== HISTORIA ========== -->
+        <section class="container my-5">
+            <h2 class="fw-bold border-start border-4 border-success ps-3 mb-4">
+                <i class="bi bi-book me-2"></i>Historia
+            </h2>
+            <p class="lead">
+                El Descanso Eterno nació con el propósito de ofrecer una experiencia de hospedaje cómoda,
+                segura y accesible para viajeros que buscan un servicio de calidad respaldado por la tecnología. Desde
+                sus inicios, el hotel identificó las dificultades que enfrentaban muchos establecimientos al gestionar
+                reservas y habitaciones mediante procesos manuales, lo que ocasionaba demoras, errores y una atención
+                poco eficiente. Con el objetivo de superar estas limitaciones, apostó por la implementación de un
+                sistema de gestión hotelera que automatiza las reservas, mejora el control de la disponibilidad de
+                habitaciones y optimiza la administración interna. Además, comprometido con las nuevas tendencias del
+                sector turístico, incorporó el servicio pet-friendly, permitiendo que los huéspedes puedan disfrutar
+                de su estadía junto a sus mascotas. Gracias a esta visión de innovación y mejora continua, El Descanso
+                Eterno busca consolidarse como un hotel moderno que combina tecnología, comodidad y un servicio
+                personalizado para brindar una experiencia de hospedaje memorable.
+            </p>
+
+            <div class="row g-4 mt-2">
+                <div class="col-md-6">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0"><i class="bi bi-bullseye me-2"></i>Misión</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">
+                                Brindar servicios de hospedaje cómodos, accesibles y seguros mediante el uso de una
+                                plataforma digital eficiente que facilite el proceso de reserva, mejore la experiencia
+                                del cliente y optimice la gestión interna del hotel, ofreciendo además opciones
+                                diferenciadas como el servicio pet-friendly, adaptándonos a las necesidades actuales del
+                                mercado turístico.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-eye me-2"></i>Visión</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">
+                                Ser un hotel reconocido por ofrecer una experiencia de hospedaje cómoda, accesible y
+                                segura destacándose por la implementación de soluciones tecnológicas innovadoras que
+                                faciliten el proceso de reserva y mejores la atención al cliente, incluyendo servicios
+                                diferenciados como la opción pet-friendly, adaptándose a las nuevas necesidades del
+                                mercado turístico.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+</body>
+
+</html>

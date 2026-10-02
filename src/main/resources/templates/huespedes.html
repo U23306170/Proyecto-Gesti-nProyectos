@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/base}" lang="es">
+
+<head>
+    <title>Huéspedes — Hotel El Descanso Eterno</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+
+<body>
+
+    <div layout:fragment="content">
+
+        <section class="container my-5">
+
+            <!-- Alertas flash -->
+            <div class="alert alert-success alert-dismissible fade show mb-3 d-flex align-items-center gap-2"
+                th:if="${mensajeExito != null}">
+                <i class="bi bi-check-circle-fill"></i>
+                <span th:text="${mensajeExito}"></span>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+            <div class="alert alert-danger alert-dismissible fade show mb-3 d-flex align-items-center gap-2"
+                th:if="${mensajeError != null}">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span th:text="${mensajeError}"></span>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Encabezado -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                <h2 class="fw-bold border-start border-4 border-primary ps-3 mb-0">
+                    <i class="bi bi-people me-2"></i>Huéspedes registrados
+                </h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoHuesped" sec:authorize="hasAnyRole('ADMIN','RECEPCIONISTA')">
+                    <i class="bi bi-person-plus me-2"></i>Nuevo Huésped
+                </button>
+            </div>
+
+            <!-- Cards de huéspedes -->
+            <div class="row g-3" id="gridHuespedes">
+                <div class="col-12 col-md-4" th:each="h : ${huespedes}">
+                    <div class="card p-3 h-100 position-relative">
+
+                        <div class="d-flex align-items-center gap-3">
+
+                            <!--
+                            h.iniciales → getIniciales() del HuespedDTO
+                        -->
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center
+                                    justify-content-center fw-bold" style="width:48px;height:48px;font-size:1.1rem"
+                                th:text="${h.iniciales}">?</div>
+                            <div class="flex-grow-1">
+                                <p class="fw-bold mb-0" th:text="${h.nombreCompleto}"></p>
+                                <p class="text-muted small mb-0">
+                                    <i class="bi bi-credit-card me-1"></i>
+                                    <span th:text="${h.dni}"></span>
+                                </p>
+                                <p class="text-muted mb-0 small"
+                                    th:if="${h.telefono != null and !h.telefono.isEmpty()}">
+                                    <i class="bi bi-telephone me-1"></i>
+                                    <span th:text="${h.telefono}"></span>
+                                </p>
+                                <p class="text-muted mb-0 small" th:if="${h.email != null and !h.email.isEmpty()}">
+                                    <i class="bi bi-envelope me-1"></i>
+                                    <span th:text="${h.email}"></span>
+                                </p>
+
+                            </div>
+                            <!-- BOTÓN EDITAR HUESPED-->
+                            <!--LO NUEVO ES LA LINEA 81-->
+                            <button type="button"
+                                class="btn btn-outline-primary btn-sm position-absolute top-0 end-0 m-3"
+                                title="Editar huésped" data-bs-toggle="modal" data-bs-target="#modalEditarHuesped"
+                                th:data-id="${h.id}" th:data-nombre="${h.nombre}"
+                                th:data-apellidopaterno="${h.apellidoPaterno}"
+                                th:data-apellidomaterno="${h.apellidoMaterno}" th:data-dni="${h.dni}"
+                                th:data-telefono="${h.telefono}" th:data-email="${h.email}"
+                                sec:authorize="hasAnyRole('ADMIN','RECEPCIONISTA')">
+
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                        </div>
+
+                        <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                            <!--
+                            h.estadoBadgeClass → getEstadoBadgeClass() del HuespedDTO
+                        -->
+                            <span class="badge" th:classappend="${h.estadoBadgeClass}" th:text="${h.estado}"></span>
+                            <small class="text-muted">ID: <span th:text="${h.id}"></span></small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12" th:if="${#lists.isEmpty(huespedes)}">
+                    <div class="alert alert-info d-flex align-items-center gap-2">
+                        <i class="bi bi-info-circle-fill"></i>
+                        <span>No hay huéspedes registrados. Usa el botón <strong>Nuevo Huésped</strong>.</span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ========== MODAL: NUEVO HUÉSPED ========== -->
+        <div class="modal fade" id="modalNuevoHuesped" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-person-plus me-2"></i>Registrar Huésped
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <!--
+                    needs-validation + novalidate → Bootstrap valida en el submit (primera capa)
+                    Si el navegador aprueba → Spring Validator valida en el servidor (segunda capa)
+                -->
+                    <form th:action="@{/huespedes/registrar}" method="post" id="formNuevoHuesped"
+                        class="needs-validation" novalidate>
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <!-- Nombres -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">
+                                        Nombres <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" name="nombre" minlength="3" maxlength="50"
+                                        required onkeypress="return soloLetras(event)">
+                                    <div class="form-text">
+                                        Ingresa tus nombres completos
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        El nombre es obligatorio (mínimo 3 caracteres)
+                                    </div>
+                                </div>
+                                <!-- Apellido Paterno -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">
+                                        Apellido Paterno <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" name="apellidoPaterno" minlength="3"
+                                        maxlength="50" required onkeypress="return soloLetras(event)">
+
+                                    <div class="invalid-feedback">
+                                        El apellido paterno es obligatorio (mínimo 3 caracteres)
+                                    </div>
+                                </div>
+
+                                <!-- Apellido Materno -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">
+                                        Apellido Materno <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" name="apellidoMaterno" minlength="3"
+                                        maxlength="50" required onkeypress="return soloLetras(event)">
+
+                                    <div class="invalid-feedback">
+                                        El apellido materno es obligatorio (mínimo 3 caracteres)
+                                    </div>
+                                </div>
+
+
+                                <!-- DNI -->
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label fw-semibold">
+                                        DNI <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" name="dni" pattern="\d{8}"
+                                        placeholder="8 dígitos" minlength="8" maxlength="8" required
+                                        onkeypress="return soloNumeros(event)">
+                                    <div class="form-text">Obligatorio — solo números</div>
+                                    <div class="invalid-feedback">
+                                        DNI inválido — debe tener exactamente 8 dígitos numéricos
+                                    </div>
+                                </div>
+
+                                <!-- Teléfono -->
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label fw-semibold">
+                                        Teléfono <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="tel" class="form-control" name="telefono" pattern="[0-9]{9}"
+                                        placeholder="9 dígitos" maxlength="9" required
+                                        onkeypress="return soloNumeros(event)">
+                                    <div class="form-text">Obligatorio — solo números</div>
+                                    <div class="invalid-feedback">
+                                        Ingresa un teléfono válido (9 dígitos).
+                                    </div>
+                                </div>
+
+                                <!-- Email -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">
+                                        Correo electrónico <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="email" class="form-control" name="email"
+                                        placeholder="ejemplo@correo.com" required>
+                                    <div class="form-text">Obligatorio para intercambio de mensajes</div>
+                                    <div class="invalid-feedback">
+                                        Ingresa un correo electrónico válido
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="bi bi-x me-1"></i>Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-person-check me-1"></i>Registrar huésped
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- ========== MODAL: EDITAR HUÉSPED ========== -->
+        <div class="modal fade" id="modalEditarHuesped" tabindex="-1">
+
+
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-person-plus me-2"></i>Editar Huésped
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <!--
+                    needs-validation + novalidate → Bootstrap valida en el submit (primera capa)
+                    Si el navegador aprueba → Spring Validator valida en el servidor (segunda capa)
+                -->
+                    <form th:action="@{/huespedes/editar}" method="post" id="formEditarHuesped" class="needs-validation"
+                        novalidate>
+                        <input type="hidden" name="id" id="editId">
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <!-- Nombres -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">
+                                        Nombres <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" id="editNombre" class="form-control" name="nombre"
+                                        placeholder="Ej: Lucía ..." minlength="3" maxlength="50" required
+                                        onkeypress="return soloLetras(event)">
+                                    <div class="form-text">
+                                        Ingresa tus nombres completos
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        El nombre es obligatorio (mínimo 3 caracteres)
+                                    </div>
+                                </div>
+                                <!-- Apellido Paterno -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">
+                                        Apellido Paterno <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" id="editApellidoPaterno" class="form-control"
+                                        name="apellidoPaterno" minlength="3" maxlength="50" required
+                                        onkeypress="return soloLetras(event)">
+
+                                    <div class="invalid-feedback">
+                                        El apellido paterno es obligatorio (mínimo 3 caracteres)
+                                    </div>
+                                </div>
+
+                                <!-- Apellido Materno -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">
+                                        Apellido Materno <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" id="editApellidoMaterno" class="form-control"
+                                        name="apellidoMaterno" minlength="3" maxlength="50" required
+                                        onkeypress="return soloLetras(event)">
+
+                                    <div class="invalid-feedback">
+                                        El apellido materno es obligatorio (mínimo 3 caracteres)
+                                    </div>
+                                </div>
+
+
+                                <!-- DNI -->
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label fw-semibold">
+                                        DNI <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" id="editDni" class="form-control" name="dni" pattern="\d{8}"
+                                        placeholder="8 dígitos" minlength="8" maxlength="8" required
+                                        onkeypress="return soloNumeros(event)">
+                                    <div class="form-text">Obligatorio — solo números</div>
+                                    <div class="invalid-feedback">
+                                        DNI inválido — debe tener exactamente 8 dígitos numéricos
+                                    </div>
+                                </div>
+
+                                <!-- Teléfono -->
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label fw-semibold">
+                                        Teléfono <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="tel" id="editTelefono" class="form-control" name="telefono"
+                                        pattern="[0-9]{9}" placeholder="9 dígitos" maxlength="9" required
+                                        onkeypress="return soloNumeros(event)">
+                                    <div class="form-text">Obligatorio — solo números.</div>
+                                    <div class="invalid-feedback">
+                                        Ingresa un teléfono válido (9 dígitos).
+                                    </div>
+                                </div>
+
+                                <!-- Email -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">
+                                        Correo electrónico <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="email" id="editEmail" class="form-control" name="email"
+                                        placeholder="ejemplo@correo.com" required>
+                                    <div class="form-text">Obligatorio para intercambio de mensajes.</div>
+                                    <div class="invalid-feedback">
+                                        Ingresa un correo electrónico válido.
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="bi bi-x me-1"></i>Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-person-check me-1"></i>Guardar cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block layout:fragment="scripts">
+        <script>
+            // ── Validación Bootstrap (primera capa) ──────────────────
+            // Se aplica a TODOS los formularios con class="needs-validation"
+            // Si el navegador aprueba → se envía al servidor → Spring Validator (segunda capa)
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('.needs-validation').forEach(form => {
+                    form.addEventListener('submit', function (e) {
+                        if (!this.checkValidity()) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }
+                        this.classList.add('was-validated');
+                    });
+                });
+
+                // Limpiar was-validated y reset al cerrar el modal
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.addEventListener('hidden.bs.modal', () => {
+                        const form = modal.querySelector('.needs-validation');
+                        if (form) {
+                            form.classList.remove('was-validated');
+                            form.reset();
+                        }
+                    });
+                });
+            });
+            function soloLetras(e) {
+                const tecla = e.key;
+                const patron = /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]$/;
+
+                if (!patron.test(tecla)) {
+                    e.preventDefault();
+                    return false;
+                }
+                return true;
+            }
+
+            function soloNumeros(e) {
+
+                const teclasPermitidas = [
+                    'Backspace',
+                    'Delete',
+                    'Tab',
+                    'ArrowLeft',
+                    'ArrowRight'
+                ];
+
+                if (teclasPermitidas.includes(e.key)) {
+                    return true;
+                }
+
+                if (!/^[0-9]$/.test(e.key)) {
+                    e.preventDefault();
+                    return false;
+                }
+
+                return true;
+            }
+            const modalEditar = document.getElementById('modalEditarHuesped');
+
+            modalEditar.addEventListener('show.bs.modal', function (event) {
+
+                // Botón que abrió el modal
+                const button = event.relatedTarget;
+
+                // Obtener datos del botón
+                const id = button.getAttribute('data-id');
+                const nombre = button.getAttribute('data-nombre');
+                const apellidoPaterno = button.getAttribute('data-apellidopaterno');
+                const apellidoMaterno = button.getAttribute('data-apellidomaterno');
+                const dni = button.getAttribute('data-dni');
+                const telefono = button.getAttribute('data-telefono');
+                const email = button.getAttribute('data-email');
+
+                // Llenar los campos del formulario
+                document.getElementById('editId').value = id;
+                document.getElementById('editNombre').value = nombre;
+                document.getElementById('editApellidoPaterno').value = apellidoPaterno;
+                document.getElementById('editApellidoMaterno').value = apellidoMaterno;
+                document.getElementById('editDni').value = dni;
+                document.getElementById('editTelefono').value = telefono;
+                document.getElementById('editEmail').value = email;
+
+            });
+
+        </script>
+    </th:block>
+
+</body>
+
+</html>
