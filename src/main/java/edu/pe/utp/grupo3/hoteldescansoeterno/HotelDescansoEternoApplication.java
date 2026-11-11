@@ -76,7 +76,7 @@ public class HotelDescansoEternoApplication {
                 LocalDate.of(2026,7,27), LocalDate.of(2026,7,29),
                 3, 1350.0, "Pendiente", ""));
 
-            System.out.println(">> Datos de prueba Hotel El Descanso Eterno cargados.");
+            System.out.println(">> Datos de prueba Hotel Fairfield by Marriott Lima Miraflores cargados.");
         };
     }
 }
